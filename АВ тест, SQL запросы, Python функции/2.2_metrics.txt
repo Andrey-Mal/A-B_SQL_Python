@@ -1,0 +1,61 @@
+WITH
+    (SELECT
+        COUNT(DISTINCT st_id) 
+    FROM
+        (
+        SELECT 
+            st_id,
+            COUNT(correct) AS count_les
+        FROM default.peas
+        WHERE correct = 1
+        GROUP BY st_id
+        HAVING count_les > 10
+        ) 
+    ) AS acive_students, -- задаю переменную: кол-во активных студентов
+    
+    (SELECT
+        COUNT(DISTINCT st_id) 
+    FROM default.peas
+    ) AS all_students, -- задаю переменную: кол-во всех  студентов
+    
+    (SELECT
+        COUNT(DISTINCT st_id)
+    FROM
+        default.final_project_check
+    ) AS pay_studnt, -- задаю  переменную: кол-во платящих студенты
+    
+    (SELECT
+        COUNT(DISTINCT st_id) 
+    FROM
+        (
+        SELECT 
+            st_id,
+            COUNT(correct) AS count_les
+        FROM default.peas
+        WHERE correct = 1
+          AND subject = 'Math'
+        GROUP BY st_id
+        HAVING count_les > 1
+        ) 
+    ) AS acive_math -- задаю переменную: кол-во активных студентов по математике
+        
+SELECT
+    test_grp, -- колонка метки в эксприменте
+    Sum(money) / all_students AS APRU, -- средний доход с привлечённого пользователя
+    Sum(money) / acive_students AS ARPAU, -- средний доход с привлечённого активного пользователя
+    count(DISTINCT sale_time) / all_students * 100 AS CR_for_purchase, -- conversion rate в покупку
+    count(DISTINCT sale_time) / acive_students * 100 AS CR_active_for_purchase, -- conversion rate активного пользователя в покупку
+    uniq (CASE WHEN  subject='Math' AND  money > 0 THEN  st_id END) / acive_math * 100 AS CR_act_math_for_sale_math -- conversion rate пользователя из активности по математике в покупку курса по математике
+FROM
+   (
+    SELECT
+      B.st_id AS st_id,
+      B.subject AS subject,
+      A.test_grp AS test_grp,
+      B.money AS money,
+      B.sale_time AS sale_time
+    FROM         -- соеденяю нужные таблици в одну
+      default.studs AS A
+      RIGHT JOIN default.final_project_check AS B ON A.st_id = B.st_id
+    )
+ GROUP BY test_grp -- группирую по метке в эксперименте
